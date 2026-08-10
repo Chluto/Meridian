@@ -41,6 +41,47 @@ Layer 1 · 模型层   DeepSeek（deepseek-chat / deepseek-reasoner）
 
 ![Meridian 测试统计](docs/test-results.png)
 
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"pie1": "#5b7a9d", "pie2": "#8aa5c0", "pie3": "#b9a06e", "pieOuterStrokeWidth": "1.5px"}}}%%
+pie title 三轮响应耗时分布（秒）
+    "第 1 轮" : 45.75
+    "第 2 轮" : 27.25
+    "第 3 轮" : 58.55
+```
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"pie1": "#5b7a9d", "pie2": "#c9bfae", "pieOuterStrokeWidth": "1.5px"}}}%%
+pie title V4-Flash 输出 Token 构成（第 3 轮，推理型模型特性）
+    "推理 Token" : 5554
+    "正文 Token" : 921
+```
+
+多智能体执行链路：
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"fontFamily": "'Noto Sans SC','Microsoft YaHei',sans-serif", "fontSize": "13px"}}}%%
+flowchart LR
+    classDef proc fill:#f4f6f8,stroke:#5b7a9d,stroke-width:1.5px,color:#22303f;
+    classDef review fill:#fbf6ec,stroke:#b98a3e,stroke-width:1.5px,color:#22303f;
+    classDef check fill:#eef4f1,stroke:#5d8a76,stroke-width:1.5px,color:#22303f;
+
+    subgraph RG[多智能体编排链路]
+        direction LR
+        B[初始检索<br/><small>browser</small>] --> P[章节规划<br/><small>planner</small>]
+        P --> H{人工审核<br/><small>human</small>}
+        H -->|接受| D[并行深度研究<br/><small>researcher</small>]
+        H -->|打回修订| P
+        D --> W[章节写作<br/><small>writer</small>]
+        W --> F{事实核查<br/><small>fact_checker</small>}
+        F -->|通过| V[可视化<br/><small>visualizer</small>]
+        F -->|打回重写| W
+        V --> U[发布<br/><small>publisher</small>]
+    end
+    class B,P,D,W,V,U proc
+    class H review
+    class F check
+```
+
 ## 快速开始
 
 要求 Python >= 3.11（推荐 3.12）。
