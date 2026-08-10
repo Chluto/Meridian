@@ -25,6 +25,22 @@ Layer 1 · 模型层   DeepSeek（deepseek-chat / deepseek-reasoner）
 - 中文学术报告：meridian_report 报告类型（摘要 / 背景与方法 / 数据与发现 / 结论 / 风险与局限 / 参考文献），Markdown 为主，可导出多格式
 - 双主线降级：多智能体链路异常时自动回退单 Agent 流水线，保证任何情况下可交付报告
 
+## 测试结果
+
+测试于本地隔离环境执行，覆盖模块冒烟、图编译、路由逻辑与 LLM 端到端生成，LLM 环节调用 DeepSeek V4-Flash 真实生成中文研究报告：
+
+| 测试项 | 结果 |
+|---|---|
+| 模块冒烟测试 | 15 / 15 通过（编排、检索器、文档、向量库、报告类型、界面） |
+| LangGraph 图编译 | 通过，9 节点（browser / planner / human / researcher / writer / fact_checker / visualizer / publisher / end） |
+| 路由逻辑 | 4 场景通过（核查接受 / 打回重写 / 超限放行 / None 字符串） |
+| LLM 端到端（V4-Flash） | 三轮实测：2 轮完整覆盖六段结构（摘要 / 背景与方法 / 数据与发现 / 结论 / 风险与局限 / 参考文献），单轮耗时 27–59 s |
+| 工程发现 | V4-Flash 为推理型模型（约 84% 输出为推理 Token），生成长报告建议 max_tokens ≥ 6000，避免正文被推理预算挤空 |
+
+测试统计（DeepSeek V4-Flash 三轮实测：响应耗时 / Token 消耗 / 六段结构覆盖）：
+
+![Meridian 测试统计](docs/test-results.png)
+
 ## 快速开始
 
 要求 Python >= 3.11（推荐 3.12）。
@@ -69,12 +85,32 @@ python multi_agents/main.py       # 编辑 task.json 设置研究主题
 | `CHUNK_SIZE / CHUNK_OVERLAP` | RAG 切分参数（默认 1000 / 200），中文长文档可调 |
 | `EMBEDDING` | 向量化模型；DeepSeek 平台不提供 embedding，需单独配置 OpenAI / SiliconFlow / Ollama 等服务 |
 
-## 目录结构
+## 项目结构
 
 ```
-gpt_researcher/      单 Agent 流水线（检索、压缩、模板、写作）
-multi_agents/        LangGraph 多智能体图（planner/researcher/writer/fact_checker/publisher）
-backend/             FastAPI 服务、报告类型入口（meridian_report）、轻量中文界面
+meridian/
+├── multi_agents/                    # LangGraph 多智能体编排（核心）
+│   ├── agents/
+│   │   ├── orchestrator.py          #   图构建与条件路由（缺陷修复处）
+│   │   ├── writer.py                #   中文学术写作
+│   │   ├── fact_checker.py          #   事实核查回环
+│   │   ├── editor.py                #   章节规划（planner）
+│   │   ├── visualizer.py / publisher.py / human.py / research.py
+│   └── memory/
+│       └── research.py              #   ResearchState 状态定义
+├── gpt_researcher/                  # 单 Agent 流水线（上游基线 · 降级路径）
+│   ├── prompts.py                   #   meridian_report 中文提示词族
+│   ├── config/                      #   配置解析与 .env
+│   ├── retrievers/                  #   bocha / tavily 检索器
+│   ├── document/                    #   本地文档加载（RAG）
+│   └── vector_store/                #   向量库封装（chunk 参数化）
+├── backend/
+│   ├── report_type/meridian_report/ #   meridian_report 报告入口（新增）
+│   ├── meridian_ui.py               #   轻量中文界面（新增）
+│   └── server/                      #   WebSocket 路由注册
+├── docs/                            # 文档与测试结果图
+├── tests/                           # 测试
+└── .env.example                     # 配置模板
 ```
 
 ## 二次开发声明
